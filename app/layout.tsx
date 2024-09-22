@@ -14,7 +14,7 @@ export default function RootLayout({
         <title>TON Connect Demo</title>
       </head>
       <body>
-        <TonConnectUIProvider manifestUrl="https://github.com/urmalina/ton_connect_manifest/blob/main/tonconnect-manifest.json">
+        <TonConnectUIProvider manifestUrl="https://raw.githubusercontent.com/urmalina/ton_connect_manifest/refs/heads/main/tonconnect-manifest.json">
           {children}
         </TonConnectUIProvider>
       </body>
