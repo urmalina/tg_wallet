@@ -1,4 +1,8 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Telegram mini app TON Wallet
+
+## Реализовано:
+
+Подключение и отключение TON-кошелька с помощью библиотеки @tonconnect/ui-react. Получение баланса через API TON
 
 ## Getting Started
 
