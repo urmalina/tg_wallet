@@ -7,9 +7,16 @@ import { useCallback, useEffect, useState } from "react";
 
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
-  const [tonWalletAddress, setTonWalletAddress] = useState<string | null>(null);
+  const [tonWalletAddress, setTonWalletAddress] = useState<string | string>("");
   const [balance, setBalance] = useState<number | null>(null);
   const [isBalanceShown, setIsBalanceShown] = useState(false); // Новое состояние для показа баланса
+  //const { Address } = require('@ton/core');
+
+  const showAssets = async () => {
+    const rawAddress = Address.parseFriendly(tonWalletAddress);
+    setTonWalletAddress(rawAddress.address.toRawString);
+  }
+
 
   // Функция вызывается, когда кошелек успешно подключен
   const handleWalletConnection = useCallback(async (address: string) => {
@@ -19,7 +26,7 @@ export default function Home() {
 
   // Функция вызывается при отключении кошелька
   const handleWalletDisconnection = useCallback(() => {
-    setTonWalletAddress(null);
+    setTonWalletAddress("");
     setBalance(null); // Сбрасываем баланс при отключении кошелька
     setIsBalanceShown(false); // Сбрасываем показ баланса при отключении
     console.log("Wallet disconnected successfully!");
@@ -84,8 +91,11 @@ export default function Home() {
       const walletBalance = await fetchWalletBalance(tonWalletAddress);
       setBalance(walletBalance);
       setIsBalanceShown(true); // Показываем баланс после получения
+      showAssets();
     }
   };
+
+
 
   // Форматирование адреса кошелька
   const formatAddress = (address: string) => {
@@ -98,7 +108,7 @@ export default function Home() {
       <h1 className="text-4xl font-bold mb-8">TON Wallet</h1>
       {tonWalletAddress ? (
         <div className="flex flex-col items-center">
-          <p className="mb-4">Connected: {formatAddress(tonWalletAddress)}</p>
+          <p className="mb-4">Connected: {tonWalletAddress}</p>
           
           {/* Кнопка для показа баланса */}
           <button
@@ -110,7 +120,8 @@ export default function Home() {
 
           {/* Показываем баланс только если кнопка была нажата */}
           {isBalanceShown && balance !== null && (
-            <p className="mb-4">Balance: {balance} TON</p>
+            <p className="mb-4">Balance: {balance} TON Connected: {tonWalletAddress}</p>
+            
           )}
 
           <button
