@@ -1,5 +1,26 @@
 'use client'
 
+// Описание интерфейса JettonAsset
+interface JettonAsset {
+  balance: number; // Баланс будет числом
+  name: string; // Название жеттона
+  symbol: string; // Символ жеттона (например, DOGS, USD₮)
+}
+interface JettonInfo {
+  balance: string;
+  wallet_address: {
+    address: string;
+    is_scam: boolean;
+    is_wallet: boolean;
+  };
+  jetton: {
+    address: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    image: string;
+  };
+}
 
 import { Address } from "@ton/core";
 import { useTonConnectUI } from "@tonconnect/ui-react";
@@ -8,14 +29,76 @@ import { useCallback, useEffect, useState } from "react";
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   const [tonWalletAddress, setTonWalletAddress] = useState<string | string>("");
-  const [balance, setBalance] = useState<number | null>(null);
+  const [rawAddress, setRawAddress] = useState<string | string>("");
+  const [testLinh, setTestLink] = useState<string | string>("");
+  const [tonBalance, setTonBalance] = useState<number | null>(null);  
+  const [jettonAssets, setJettonAssets] = useState<JettonAsset[]>([]);
+  //const [jettonAssets, setJettonAssets] = useState<any[]>([]);
+  //const [assets, setAssets] = useState<l
   const [isBalanceShown, setIsBalanceShown] = useState(false); // Новое состояние для показа баланса
   //const { Address } = require('@ton/core');
 
-  const showAssets = async () => {
-    const rawAddress = Address.parseFriendly(tonWalletAddress);
-    setTonWalletAddress(rawAddress.address.toRawString);
+  // const showAssets = async () => {
+  //   const rawAddress = Address.parseRaw(tonWalletAddress);
+  //   setTonWalletAddress(rawAddress.toRawString);
+  //   const url = `https://toncenter.com/api/v2/getAddressBalance?address=${address}`;
+  //   const response = await fetch(url);
+  //   const data = await response.json();
+  // }
+
+  
+  
+
+  const getRawAddress = async (address: string) => {    
+    try {
+      const url = `https://toncenter.com/api/v2/unpackAddress?address=${address}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.ok && data.result) {
+        setRawAddress(data.result);
+        return data.result;
+      } else {
+        console.error("Failed to get raw address", data.error);   
+        return "";     
+      }
+    } catch (error) {
+      console.error("Failed to get raw address", error); 
+      return "";     
+    }
   }
+
+  const getAssets = async (rawAddres: string) => {
+    try {
+      //getRawAddress(tonWalletAddress);
+      const url = `https://tonapi.io/v2/accounts/${rawAddres}/jettons`;
+
+      setTestLink(url)
+      const response = await fetch(url);
+      const data = await response.json();
+        
+      if (data.balances) 
+        {
+          const balances = data.balances;
+          const jettonAssets: JettonAsset[] = balances.map((jettonInfo: JettonInfo) => {
+            const balance = Number(jettonInfo.balance) / Math.pow(10, jettonInfo.jetton.decimals);
+            const name = jettonInfo.jetton.name;
+            const symbol = jettonInfo.jetton.symbol;
+
+            return { balance, name, symbol };
+        });
+
+        setJettonAssets(jettonAssets);
+
+      } else {
+        console.error("Failed to get info about jetton assets");
+        return [];
+      }
+    } catch (error) {
+      console.error("Failed to get info about jetton assets", error);
+      return [];
+    }
+  };
 
 
   // Функция вызывается, когда кошелек успешно подключен
@@ -27,7 +110,7 @@ export default function Home() {
   // Функция вызывается при отключении кошелька
   const handleWalletDisconnection = useCallback(() => {
     setTonWalletAddress("");
-    setBalance(null); // Сбрасываем баланс при отключении кошелька
+    setTonBalance(null); // Сбрасываем баланс при отключении кошелька
     setIsBalanceShown(false); // Сбрасываем показ баланса при отключении
     console.log("Wallet disconnected successfully!");
   }, []);
@@ -89,9 +172,12 @@ export default function Home() {
   const handleShowBalance = async () => {
     if (tonWalletAddress) {
       const walletBalance = await fetchWalletBalance(tonWalletAddress);
-      setBalance(walletBalance);
+      setTonBalance(walletBalance);
+      const rawAdr = await getRawAddress(tonWalletAddress);
+      //getAssets("0:172fc465e49d9f06e133628e1f7a76877b096aef1dc1f0f0dbaa33782ca0fc05");
+      getAssets(rawAdr);
       setIsBalanceShown(true); // Показываем баланс после получения
-      showAssets();
+      
     }
   };
 
@@ -108,7 +194,7 @@ export default function Home() {
       <h1 className="text-4xl font-bold mb-8">TON Wallet</h1>
       {tonWalletAddress ? (
         <div className="flex flex-col items-center">
-          <p className="mb-4">Connected: {tonWalletAddress}</p>
+          <p className="mb-4">Connected: {formatAddress(tonWalletAddress)}</p>
           
           {/* Кнопка для показа баланса */}
           <button
@@ -117,13 +203,28 @@ export default function Home() {
           >
             Show Balance
           </button>
-
+  
           {/* Показываем баланс только если кнопка была нажата */}
-          {isBalanceShown && balance !== null && (
-            <p className="mb-4">Balance: {balance} TON Connected: {tonWalletAddress}</p>
-            
+          {isBalanceShown && tonBalance !== null && (
+            <div>
+              {/* Отображение баланса TON */}
+              <p className="mb-4">Balance: {tonBalance} TON</p>
+  
+              {/* Отображение жеттонов */}
+              <h2 className="text-2xl font-bold mb-4">Jetton Assets</h2>
+              {jettonAssets.length > 0? (
+                jettonAssets.map((asset, index) => (
+                  <p key={index}>
+                    {asset.name}: {asset.balance} {asset.symbol}
+                  </p>
+                ))
+              ) : (
+                <p>No jetton assets found. link {testLinh} ad {rawAddress}{}</p>
+                
+              )}
+            </div>
           )}
-
+  
           <button
             onClick={handleWalletAction}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
@@ -141,4 +242,5 @@ export default function Home() {
       )}
     </main>
   );
+  
 }
