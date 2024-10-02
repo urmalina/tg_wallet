@@ -29,8 +29,7 @@ import { useCallback, useEffect, useState } from "react";
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   const [tonWalletAddress, setTonWalletAddress] = useState<string | string>("");
-  const [rawAddress, setRawAddress] = useState<string | string>("");
-  const [testLinh, setTestLink] = useState<string | string>("");
+  //const [rawAddress, setRawAddress] = useState<string | string>("");  
   const [tonBalance, setTonBalance] = useState<number | null>(null);  
   const [jettonAssets, setJettonAssets] = useState<JettonAsset[]>([]);
   //const [jettonAssets, setJettonAssets] = useState<any[]>([]);
@@ -56,7 +55,7 @@ export default function Home() {
       const data = await response.json();
 
       if (data.ok && data.result) {
-        setRawAddress(data.result);
+        //setRawAddress(data.result);
         return data.result;
       } else {
         console.error("Failed to get raw address", data.error);   
@@ -72,8 +71,7 @@ export default function Home() {
     try {
       //getRawAddress(tonWalletAddress);
       const url = `https://tonapi.io/v2/accounts/${rawAddres}/jettons`;
-
-      setTestLink(url)
+      
       const response = await fetch(url);
       const data = await response.json();
         
@@ -175,7 +173,7 @@ export default function Home() {
       setTonBalance(walletBalance);
       const rawAdr = await getRawAddress(tonWalletAddress);
       //getAssets("0:172fc465e49d9f06e133628e1f7a76877b096aef1dc1f0f0dbaa33782ca0fc05");
-      getAssets(rawAdr);
+      await getAssets(rawAdr);
       setIsBalanceShown(true); // Показываем баланс после получения
       
     }
@@ -219,7 +217,7 @@ export default function Home() {
                   </p>
                 ))
               ) : (
-                <p>No jetton assets found. link {testLinh} ad {rawAddress}{}</p>
+                <p>No jetton assets found.</p>
                 
               )}
             </div>
