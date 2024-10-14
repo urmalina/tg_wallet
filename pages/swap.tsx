@@ -23,8 +23,8 @@ const Swap = () =>  {
   const [toCurrency, setToCurrency] = useState('TON');  // Валюта для получения
   //const [rate, setRate] = useState(1);  // Курс обмена (зависит от валют)
   //setRate(parseFloat(getUsdRateForTon()));
-  const [fromRate, setFromRate] = useState(1); 
-  const [toRate, setToRate] = useState(1); 
+  const [fromRate, setFromRate] = useState(); 
+  const [toRate, setToRate] = useState(); 
   const [amountInExchanged, setAmountInExchanged] = useState(1);
 
   const tonClient = new TonClient4({ endpoint: "https://mainnet-v4.tonhubapi.com" });
@@ -42,6 +42,19 @@ const Swap = () =>  {
 //     NOT: 0.01,
 //     DOGS: 0.02
 //   }; 
+
+  // Функция для загрузки курса валют
+  const loadExchangeRate = async () => {
+    // Имитация загрузки курса валют
+    const fetchedRate = await getUsdRateForTon(); // Здесь функция для получения курса
+    setFromRate(fetchedRate);
+    setToRate(fetchedRate);
+  };
+
+  // Вызов функции для получения курса при монтировании компонента
+  useEffect(() => {
+    loadExchangeRate(); // Загрузка курса при загрузке страницы
+  }, []);
 
   const router = useRouter();
   useEffect(() => {
@@ -186,11 +199,6 @@ const Swap = () =>  {
   };
  
 
-//   const handleSwap = () => {
-//     // Логика выполнения свопа
-//     alert(`Swapping ${amount} ${fromCurrency} to ${toCurrency}`);
-//   };
-
   // Обновление курса при изменении выбранных валют
   const handleCurrencyChange = async (from: string, to: string, ) => {
     //const fromRate = tokenRates[from];
@@ -224,107 +232,122 @@ const Swap = () =>  {
     setAmountInExchanged(parseFloat(amount)*newRate);   
   };
 
+    // Функция для свопа валют
+    const handleSwapCurrencies = () => {
+        const temp = fromCurrency;
+        setFromCurrency(toCurrency);
+        setToCurrency(temp);
+        handleCurrencyChange(toCurrency, fromCurrency);
+      };
 
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center">
-        {/* Кнопка Назад в верхнем левом углу */}
-        <div className="absolute top-4 left-4">
-            <Link href="/">
-                <a className="text-blue-500 hover:text-blue-700 font-bold">← Back</a>
-            </Link>
-        </div>
-      <h1 className="text-4xl font-bold mb-8">Token Swap</h1>
 
-      <div className="w-full max-w-xs">
-        {/* Поле для ввода суммы */}
-        <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-          Amount
-        </label>
-        <input
-          id="amount"
-          type="number"          
-          onChange={(e) => {
-            setAmount(e.target.value);
-            handleAmountChange(e.target.value);
-          }}
-          placeholder="Enter amount"
-          className="w-full border border-gray-300 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      return (
+        <main className="flex min-h-screen flex-col items-center justify-center">
+            {/* Кнопка Назад в верхнем левом углу */}
+            <div className="absolute top-4 left-4">
+                <Link href="/">
+                    <a className="text-blue-500 hover:text-blue-700 font-bold">← Back</a>
+                </Link>
+            </div>
+          <h1 className="text-4xl font-bold mb-8">Token Swap</h1>
+    
+          <div className="w-full max-w-xs">
+            {/* Поле для ввода суммы */}
+            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
+              Amount
+            </label>
+            <input
+              id="amount"
+              type="number"          
+              onChange={(e) => {
+                setAmount(e.target.value);
+                handleAmountChange(e.target.value);
+              }}
+              placeholder="Enter amount"
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+    
+            {/* Выпадающий список для выбора валюты перевода */}
+            <label htmlFor="fromCurrency" className="block text-sm font-medium text-gray-700 mb-2">
+              From
+            </label>
+            <select
+              id="fromCurrency"
+              value={fromCurrency}
+              onChange={(e) => {
+                setFromCurrency(e.target.value);
+                handleCurrencyChange(e.target.value, toCurrency);
+              }}
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="TON">TON</option>
+              <option value="USD₮">USD₮</option>
+              <option value="HMSTR">HMSTR</option>
+              <option value="NOT">NOT</option>
+              <option value="DOGS">DOGS</option>
+            </select>
 
-        {/* Выпадающий список для выбора валюты перевода */}
-        <label htmlFor="fromCurrency" className="block text-sm font-medium text-gray-700 mb-2">
-          From
-        </label>
-        <select
-          id="fromCurrency"
-          value={fromCurrency}
-          onChange={(e) => {
-            setFromCurrency(e.target.value);
-            handleCurrencyChange(e.target.value, toCurrency);
-          }}
-          className="w-full border border-gray-300 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="TON">TON</option>
-          <option value="USD₮">USD₮</option>
-          <option value="HMSTR">HMSTR</option>
-          <option value="NOT">NOT</option>
-          <option value="DOGS">DOGS</option>
-        </select>
-
-        {/* Отображение суммы в долларах для From */}
-        {amountToSwap && (
-          <p className="text-gray-500 mb-4">
+            {/* Отображение суммы в долларах для From */}            
+            <p className="text-gray-500 mb-4">
             ≈ ${fromRate}
-          </p>
-        )}
+            </p>
 
-        {/* Выпадающий список для выбора валюты получения */}
-        <label htmlFor="toCurrency" className="block text-sm font-medium text-gray-700 mb-2">
-          To
-        </label>
-        <select
-          id="toCurrency"
-          value={toCurrency}
-          onChange={(e) => {
-            setToCurrency(e.target.value);
-            handleCurrencyChange(fromCurrency, e.target.value);
-          }}
-          className="w-full border border-gray-300 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="TON">TON</option>
-          <option value="USD₮">USD₮</option>
-          <option value="HMSTR">HMSTR</option>
-          <option value="NOT">NOT</option>
-          <option value="DOGS">DOGS</option>
-        </select>
-
-        {/* Отображение суммы в долларах для To */}
-        {amountToSwap && (
-          <p className="text-gray-500 mb-4">
+            <div className="flex justify-center mb-4">
+            <button
+                onClick={handleSwapCurrencies}
+                className="bg-gray-200 p-2 rounded-full hover:bg-gray-300 focus:outline-none"
+            >
+                ⬍ {/* Символ стрелочек */}
+            </button>
+            </div>
+                           
+            {/* Выпадающий список для выбора валюты получения */}
+            <label htmlFor="toCurrency" className="block text-sm font-medium text-gray-700 mb-2">
+              To
+            </label>
+            <select
+              id="toCurrency"
+              value={toCurrency}
+              onChange={(e) => {
+                setToCurrency(e.target.value);
+                handleCurrencyChange(fromCurrency, e.target.value);
+              }}
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="TON">TON</option>
+              <option value="USD₮">USD₮</option>
+              <option value="HMSTR">HMSTR</option>
+              <option value="NOT">NOT</option>
+              <option value="DOGS">DOGS</option>
+            </select>
+    
+            {/* Отображение суммы в долларах для To */}
+            
+            <p className="text-gray-500 mb-4">
             ≈ ${toRate}
-          </p>
-        )}
-
-        {/* Отображение курса валют */}
-        <p className="mb-4">
-          Exchange Rate: {amountToSwap} {fromCurrency} = {amountInExchanged.toFixed(4)} {toCurrency}
-        </p>
-
-        {/* Кнопка для выполнения свопа */}
-        <button
-          onClick={handleSwapTokens}
-          className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        >
-          Swap
-        </button>
-      </div>
-
-      {/* Отображение адреса TON Wallet */}
-      {tonWalletAddress && (
-        <p className="mt-8 text-sm text-gray-500">Connected Wallet: {formatAddress(tonWalletAddress)}</p>
-      )}
-    </main>
-  );
+            </p>
+            
+    
+            {/* Отображение курса валют */}
+            <p className="mb-4">
+              Exchange Rate: {amountToSwap} {fromCurrency} = {amountInExchanged.toFixed(4)} {toCurrency}
+            </p>
+    
+            {/* Кнопка для выполнения свопа */}
+            <button
+              onClick={handleSwapTokens}
+              className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Swap
+            </button>
+          </div>
+    
+          {/* Отображение адреса TON Wallet */}
+          {tonWalletAddress && (
+            <p className="mt-8 text-sm text-gray-500">Connected Wallet: {formatAddress(tonWalletAddress)}</p>
+          )}
+        </main>
+      );
 };
 
 export default Swap;
