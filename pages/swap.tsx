@@ -8,14 +8,8 @@ import { useTonConnectUI } from "@tonconnect/ui-react";
 import { useRouter } from 'next/router';
 import { getUsdRate, getUsdRateForTon } from '@/app/token_rates';
 import Link from 'next/link';
-
-// const tokenRates: { [key: string]: number } = {
-//     TON: 2.5, // курс TON к USD
-//     USDT: 1,  // курс USDT к USD
-//     HMSTR: 0.01, // курс HMSTR к USD
-//     NOT: 0.005,  // курс NOT к USD
-//     DOGS: 0.002  // курс DOGS к USD
-//   };
+import { JettonInfo } from "@/app/interfaces";
+import { getRawAddress, fetchWalletBalance, formatAddress, getAddressBySymbol} from '@/app/baseTon';
 
 const Swap = () =>  {
   const [amountToSwap, setAmount] = useState<string>(''); // Сумма для свопа
@@ -32,16 +26,7 @@ const Swap = () =>  {
   
   const [tonConnectUI] = useTonConnectUI();
   const [tonWalletAddress, setTonWalletAddress] = useState<string | string>(""); 
-
-  //const [amountInUSD, setAmountInUSD] = useState<number | null>(null);
-  //const [usdRate, setUsdRate] = useState(1.0); // Предполагаем, что курс 1:1
-//   const usdRates: { [key: string]: number } = {
-//     TON: 2.0, // Пример курса TON к USD
-//     USDT: 1.0,
-//     HMSTR: 0.05,
-//     NOT: 0.01,
-//     DOGS: 0.02
-//   }; 
+  const router = useRouter();
 
   // Функция для загрузки курса валют
   const loadExchangeRate = async () => {
@@ -56,7 +41,8 @@ const Swap = () =>  {
     loadExchangeRate(); // Загрузка курса при загрузке страницы
   }, []);
 
-  const router = useRouter();
+  
+
   useEffect(() => {
     if (router.isReady) {
       const address = router.query.tonWalletAddress;
@@ -67,16 +53,12 @@ const Swap = () =>  {
       } else {
         setTonWalletAddress(address as string);  // Просто строка
       }
+      
     }
   }, [router.isReady, router.query.tonWalletAddress]);
   
    
 
-  // Функция для получения address по символу токена
-  function getAddressBySymbol(symbol: string): string {
-    const token = jettons.jettons.find(jetton => jetton.symbol === symbol);
-    return token ? token.address : "";
-  } 
 
   // Функция для свопа токенов
   const handleSwapTokens = async () => {
@@ -123,12 +105,9 @@ const Swap = () =>  {
             });
           }
         };
-        //const token = jettons.jettons.find(jetton => jetton.symbol === tokenFrom);
-        //const decimals = token!.decimals;
-        //const decimals = jettons.jettons.find(jetton => jetton.symbol === symbol)
+        
         const amountIn = toNano(amountToSwap); 
-        //const poolAddress = pool.address;
-
+        
 
         // Выполнение свопа
         await vault.sendSwap(sender, {
@@ -151,7 +130,7 @@ const Swap = () =>  {
         const pool = toCurrency ==="TON"
         ?tonClient.open(await factory.getPool(PoolType.VOLATILE, [TO_TOKEN, FROM_TOKEN]))
         :tonClient.open(await factory.getPool(PoolType.VOLATILE, [FROM_TOKEN, TO_TOKEN])); 
-        //const pool = tonClient.open(await factory.getPool(PoolType.VOLATILE, [FROM_TOKEN, TO_TOKEN]));
+        
         const jettonRoot = tonClient.open(JettonRoot.createFromAddress(FROM_ADDRESS));
         
        // Инициализация объекта Sender через TonConnect
@@ -175,8 +154,7 @@ const Swap = () =>  {
         const jettonWallet = tonClient.open(await jettonRoot.getWallet(sender.address!));
 
         const token = jettons.jettons.find(jetton => jetton.symbol === fromCurrency);
-        const decimals = token!.decimals;
-        //const decimals = jettons.jettons.find(jetton => jetton.symbol === symbol)
+        const decimals = token!.decimals;       
         const amountIn = parseFloat(amountToSwap) * Math.pow(10, parseInt(decimals)); 
         const poolAddress = pool.address;
 
@@ -208,18 +186,14 @@ const Swap = () =>  {
     const toRate = to === "TON"
     ? await getUsdRateForTon()
     : await getUsdRate(getAddressBySymbol(to));
-    //const toRate = getUsdRate(getAddressBySymbol(to))
-    //setRate(parseFloat(await fromRate) / parseFloat(await toRate));
+    
     setFromRate(fromRate);
     setToRate(toRate);
     const newRate = parseFloat(fromRate)/parseFloat(toRate);    
     setAmountInExchanged(parseFloat(amountToSwap)*newRate);   
   };
 
-  const formatAddress = (address: string) => {
-    const tempAddress = Address.parse(address).toString();
-    return `${tempAddress.slice(0, 4)}...${tempAddress.slice(-4)}`;
-  };
+  
 
   const handleAmountChange = async (amount: string) => {
     const fromRate = fromCurrency === "TON"
@@ -232,7 +206,7 @@ const Swap = () =>  {
     setAmountInExchanged(parseFloat(amount)*newRate);   
   };
 
-    // Функция для свопа валют
+    // Функция для reverse токенов в списках
     const handleSwapCurrencies = () => {
         const temp = fromCurrency;
         setFromCurrency(toCurrency);
@@ -240,7 +214,35 @@ const Swap = () =>  {
         handleCurrencyChange(toCurrency, fromCurrency);
       };
 
+      const getAccountAssetBalance = async (rawAddress: string, symbol: string): Promise<number> => {
+        try {
+          const url = `https://tonapi.io/v2/accounts/${rawAddress}/jettons`;
+          const response = await fetch(url);
+          const data = await response.json();
+      
+          if (data.balances) {
+            const balances = data.balances;
+      
+            // Поиск нужного токена по символу и возврат его баланса
+            const jettonInfo = balances.find((jettonInfo: JettonInfo) => jettonInfo.jetton.symbol === symbol);
+      
+            if (jettonInfo) {
+              return Number(jettonInfo.balance/ Math.pow(10,parseInt(jettonInfo.jetton.decimals)));
+            } else {
+              console.error("Jetton with symbol not found");
+              return 0;
+            }
+          } else {
+            console.error("Failed to get info about jetton assets");
+            return 0;
+          }
+        } catch (error) {
+          console.error("Failed to get info about jetton assets", error);
+          return 0;
+        }
+      };
 
+   
       return (
         <main className="flex min-h-screen flex-col items-center justify-center">
             {/* Кнопка Назад в верхнем левом углу */}
@@ -252,13 +254,11 @@ const Swap = () =>  {
           <h1 className="text-4xl font-bold mb-8">Token Swap</h1>
     
           <div className="w-full max-w-xs">
-            {/* Поле для ввода суммы */}
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-              Amount
-            </label>
+            {/* Поле для ввода суммы */}            
             <input
               id="amount"
-              type="number"          
+              type="number" 
+              value={amountToSwap}         
               onChange={(e) => {
                 setAmount(e.target.value);
                 handleAmountChange(e.target.value);
@@ -266,11 +266,26 @@ const Swap = () =>  {
               placeholder="Enter amount"
               className="w-full border border-gray-300 rounded-lg p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {/* Кнопки для выбора процента */}
+            <div className="flex justify-between mb-4">
+                {[1, 5, 10, 20, 30, 100].map((percentage) => (
+                <button
+                    key={percentage}
+                    onClick={async () => {
+                    const calculatedAmount = fromCurrency==="TON"
+                    ? await fetchWalletBalance(tonWalletAddress) * percentage/100
+                    :(await getAccountAssetBalance(await getRawAddress(tonWalletAddress), fromCurrency) * percentage/100);
+                    setAmount(calculatedAmount.toString()); // Присваиваем округленное значение
+                    handleAmountChange(calculatedAmount.toString()); // Обновляем состояние
+                    }}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-2 rounded"
+                    >
+                    {percentage}%
+              </button>
+                ))}
+            </div>
     
             {/* Выпадающий список для выбора валюты перевода */}
-            <label htmlFor="fromCurrency" className="block text-sm font-medium text-gray-700 mb-2">
-              From
-            </label>
             <select
               id="fromCurrency"
               value={fromCurrency}
@@ -301,10 +316,7 @@ const Swap = () =>  {
             </button>
             </div>
                            
-            {/* Выпадающий список для выбора валюты получения */}
-            <label htmlFor="toCurrency" className="block text-sm font-medium text-gray-700 mb-2">
-              To
-            </label>
+            {/* Выпадающий список для выбора валюты получения */}            
             <select
               id="toCurrency"
               value={toCurrency}
@@ -330,7 +342,7 @@ const Swap = () =>  {
     
             {/* Отображение курса валют */}
             <p className="mb-4">
-              Exchange Rate: {amountToSwap} {fromCurrency} = {amountInExchanged.toFixed(4)} {toCurrency}
+              {amountToSwap} {fromCurrency} = {amountInExchanged.toFixed(4)} {toCurrency}
             </p>
     
             {/* Кнопка для выполнения свопа */}
